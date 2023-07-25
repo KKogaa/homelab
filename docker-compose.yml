@@ -1,0 +1,109 @@
+version: '3.8'
+services:
+  jellyfin:
+    image: ghcr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Los_Angeles
+    volumes:
+      - jellyfin-config:/config
+      - ./tvshows:/data/tvshows
+      - ./movies:/data/movies
+      - ./animes:/data/animes
+      # - dev/vcsm:/dev/vcsm
+      # - dev/vchiq:/dev/vchiq
+    # ports:
+    #   - 8096:8096
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.localhost`)"
+      - "traefik.http.routers.jellyfin.entrypoints=web"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+
+  nextcloud:
+    image: linuxserver/nextcloud:latest
+    container_name: nextcloud
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - nextcloud-config:/config
+      - ./tvshows:/data/tvshows
+      - ./movies:/data/movies
+      - ./animes:/data/animes
+    # ports:
+    #   - 9442:443
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.localhost`)"
+      - "traefik.http.routers.nextcloud.entrypoints=web"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+
+  heimdall:
+    image: lscr.io/linuxserver/heimdall:latest
+    container_name: heimdall
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - heimdall-config:/config
+    # ports:
+    #   - 7000:80
+    #   - 443:443
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.heimdall.rule=Host(`heimdall.localhost`)"
+      - "traefik.http.routers.heimdall.entrypoints=web"
+      - "traefik.http.services.heimdall.loadbalancer.server.port=80"
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    volumes:
+      - ./vault:/data
+    # ports:
+    #   - 3000:80
+    labels:
+      # - "traefik.http.routers.vaultwarden.tls=true"
+      # - "traefik.http.routers.vaultwarden.entrypoints=websecure"
+      - "traefik.enable=true"
+      - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.localhost`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=web"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
+  whoami:
+    image: "traefik/whoami"
+    container_name: "simple-service"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+
+  traefik:
+    image: "traefik:v2.10"
+    container_name: traefik
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+networks:
+  default:
+    name: traefik
+    external: true
+
+volumes:
+  heimdall-config:
+  nextcloud-config:
+  jellyfin-config:
+
